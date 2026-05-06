@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Task Bars</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 450px; box-sizing: border-box; }
+        h2 { color: #2d3436; margin-top: 0; text-align: center; }
+        .input-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { font-size: 0.9rem; font-weight: 600; color: #636e72; margin-bottom: 5px; }
+        input { padding: 12px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 1rem; outline: none; transition: border 0.3s; }
+        input:focus { border-color: #6c5ce7; }
+        button#add-btn { background: #6c5ce7; color: white; border: none; padding: 15px; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem; margin-top: 10px; }
+        
+        .task-list { margin-top: 30px; width: 100%; }
+        .task-card { background: #fff; border: 1px solid #edf2f7; padding: 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .task-name { font-weight: bold; color: #2d3436; font-size: 1.1rem; }
+        .delete-btn { background: #ff7675; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 0.7rem; }
+        
+        .progress-bg { background: #eee; height: 28px; border-radius: 14px; overflow: hidden; position: relative; }
+        .progress-fill { background: linear-gradient(90deg, #00b894, #00cec9); height: 100%; width: 0%; transition: width 0.4s ease; display: flex; align-items: center; justify-content: flex-end; }
+        .percent-text { font-size: 12px; color: white; padding-right: 12px; font-weight: 800; }
+        .due-date { font-size: 0.75rem; color: #b2bec3; margin-top: 5px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Task Progress</h2>
+    <div class="input-group">
+        <label>What are you working on?</label>
+        <input type="text" id="taskName" placeholder="e.g. Reading 50 pages">
+    </div>
+    <div class="input-group">
+        <label>When is it due?</label>
+        <input type="datetime-local" id="deadline">
+    </div>
+    <button id="add-btn" onclick="addTask()">Create Task</button>
+
+    <div id="taskList" class="task-list"></div>
+</div>
+
+<script>
+    let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
+
+    // On Load: Render saved tasks
+    window.onload = () => {
+        tasks.forEach(task => renderTask(task));
+        setInterval(refreshAllProgress, 1000); // Update all bars every second
+    };
+
+    function addTask() {
+        const name = document.getElementById('taskName').value;
+        const deadlineVal = document.getElementById('deadline').value;
+        
+        if (!name || !deadlineVal) return alert("Fill everything in!");
+
+        const newTask = {
+            id: Date.now(),
+            name: name,
+            start: new Date().getTime(),
+            deadline: new Date(deadlineVal).getTime()
+        };
+
+        tasks.push(newTask);
+        localStorage.setItem('myTasks', JSON.stringify(tasks));
+        renderTask(newTask);
+        
+        // Clear inputs
+        document.getElementById('taskName').value = '';
+        document.getElementById('deadline').value = '';
+    }
+
+    function renderTask(task) {
+        const taskList = document.getElementById('taskList');
+        const div = document.createElement('div');
+        div.className = 'task-card';
+        div.id = `task-${task.id}`;
+        
+        div.innerHTML = `
+            <div class="task-header">
+                <span class="task-name">${task.name}</span>
+                <button class="delete-btn" onclick="deleteTask(${task.id})">Delete</button>
+            </div>
+            <div class="progress-bg">
+                <div class="progress-fill" id="fill-${task.id}">
+                    <span class="percent-text" id="text-${task.id}">0%</span>
+                </div>
+            </div>
+            <span class="due-date">Due: ${new Date(task.deadline).toLocaleString()}</span>
+        `;
+        taskList.appendChild(div);
+        updateSingleProgress(task);
+    }
+
+    function refreshAllProgress() {
+        tasks.forEach(task => updateSingleProgress(task));
+    }
+
+    function updateSingleProgress(task) {
+        const now = new Date().getTime();
+        const total = task.deadline - task.start;
+        const elapsed = now - task.start;
+        
+        let percent = Math.floor((elapsed / total) * 100);
+        if (percent > 100) percent = 100;
+        if (percent < 0) percent = 0;
+
+        const fill = document.getElementById(`fill-${task.id}`);
+        const text = document.getElementById(`text-${task.id}`);
+        if (fill && text) {
+            fill.style.width = percent + '%';
+            text.innerText = percent + '%';
+        }
+    }
+
+    function deleteTask(id) {
+        tasks = tasks.filter(t => t.id !== id);
+        localStorage.setItem('myTasks', JSON.stringify(tasks));
+        document.getElementById(`task-${id}`).remove();
+    }
+</script>
+
+</body>
+</html>
